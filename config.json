@@ -13,5 +13,6 @@
     ],
     "number_of_tables": 5,
     "number_of_waiters": 2,
-    "simulation_duration": 3600
+    "simulation_duration": 3600,
+    "arrival_rate": 0.003
 }

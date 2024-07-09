@@ -1,6 +1,6 @@
 import heapq
 from typing import List
-from events.Event import Event
+from src.events.Event import Event
 
 class EventQueue:
     def __init__(self):
@@ -11,3 +11,6 @@ class EventQueue:
 
     def next_event(self):
         return heapq.heappop(self.events) if self.events else None
+    
+    def is_empty(self):
+        return len(self.events) == 0

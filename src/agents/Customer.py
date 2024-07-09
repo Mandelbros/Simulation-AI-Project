@@ -1,4 +1,5 @@
-import Agent
+from src.agents.Agent import Agent
 
 class Customer(Agent):
-    pass
+    def __init__(self, id):
+        self.id = id
