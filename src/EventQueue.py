@@ -1,6 +1,6 @@
 import heapq
 from typing import List
-from src.events.Event import Event
+from src.events import Event
 
 class EventQueue:
     def __init__(self):
