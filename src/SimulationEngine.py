@@ -1,7 +1,7 @@
 import random
 from src.Restaurant import Restaurant
 from src.events.EventQueue import EventQueue
-from src.events.CustomerArrival import CustomerArrival
+from src.events.events import CustomerArrives
 from src.agents.Customer import Customer
 
 class SimulationEngine:
@@ -23,7 +23,7 @@ class SimulationEngine:
             if current_time < self.duration:
                 customer = Customer(customer_id)
                 customer_id += 1
-                arrival_event = CustomerArrival(current_time, customer)
+                arrival_event = CustomerArrives(current_time, customer)
                 self.event_queue.add_event(arrival_event)
 
     def run(self):

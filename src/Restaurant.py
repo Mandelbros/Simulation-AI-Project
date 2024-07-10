@@ -1,5 +1,5 @@
-from src.events.Event import Event
-from src.events.CustomerArrival import CustomerArrival
+from src.events.events import Event, CustomerArrives
+
 class Restaurant: 
     def __init__(self, restaurant_grid, table_amount, waiter_amount):
         # self.tables = [Table(i) for i in range(num_tables)]
@@ -12,11 +12,11 @@ class Restaurant:
 
     # def add_customer(self, customer, arrival_time):
     #     self.customers.append(customer)
-    #     event = Event(arrival_time, 'CustomerArrival', customer)
+    #     event = Event(arrival_time, 'CustomerArrives', customer)
     #     self.event_queue.add_event(event)
 
     def process_event(self, event:Event):
-        if isinstance(event, CustomerArrival):
+        if isinstance(event, CustomerArrives):
             pass
             # self.assign_table(event.customer)
         # elif event.event_type == 'CustomerOrder':
