@@ -1,6 +1,5 @@
 from typing import List
 from enum import Enum, auto
-from src.events.events import Event, CustomerArrives
 from src.utils.utils import Place, Position
 from src.Kitchen import Kitchen
 from src.agents.Waiter import Waiter
@@ -19,11 +18,11 @@ class Restaurant:
         self.waiter_amount = waiter_amount
         self.total_tips = 0  # Add total_tips attribute
         self.path_matrix = None
-        self.entry_door_position: Place = None
-        self.kitchen = None
-        self.tables = [] 
-        self.waiters = [Waiter(i) for i in range(waiter_amount)]
+        self.entry_door: Place = None
+        self.kitchen: Kitchen = None
+        self.tables: List[Table] = [] 
         self.init_places()
+        self.waiters: List[Waiter] = [Waiter(i, self.kitchen.position) for i in range(waiter_amount)]
         self.fill_path_matrix()
 
     def init_places(self): 
@@ -42,7 +41,7 @@ class Restaurant:
             for j, cell in enumerate(row):
                 position = Position(i, j)
                 if cell == PlaceType.ENTRY_DOOR:
-                    self.entry_door_position = Place(0, position)
+                    self.entry_door = Place(0, position)
                 elif cell == PlaceType.KITCHEN:
                     self.kitchen = Kitchen(1, position)
                 elif cell == PlaceType.TABLE:
@@ -61,7 +60,7 @@ class Restaurant:
         """
         queue = [start_position]
         visited = {start_position}
-        path = {start_position: []}
+        path = {start_position: [start_position]}
 
         while queue:
             position = queue.pop(0)
@@ -92,59 +91,15 @@ class Restaurant:
         Returns:
         None
         """
-        places: List[Place] = [self.entry_door_position, self.kitchen] + self.tables
+        places: List[Place] = [self.entry_door, self.kitchen] + self.tables
         self.path_matrix = [[None for _ in places] for _ in places]
         for i, start in enumerate(places):
             for j, end in enumerate(places):
-                if i!=j:
+                if i != j:
                     self.path_matrix[i][j] = self.get_path(start.position, end.position)
 
-    def process_event(self, event: Event):
-        if isinstance(event, CustomerArrives):
-            pass
-            # self.assign_table(event.customer)
-
-
-        # elif event.event_type == 'CustomerOrder':
-        #     waiter = self.find_idle_waiter()
-        #     if waiter:
-        #         waiter.take_order(event.customer)
-        #         food_ready_time = event.time + event.customer.order_time
-        #         self.event_queue.add_event(Event(food_ready_time, 'OrderReady', event.customer, waiter))
-        # elif event.event_type == 'OrderReady':
-        #     event.waiter.serve_food(event.customer)
-        #     eat_time = event.time + event.customer.eat_time
-        #     self.event_queue.add_event(Event(eat_time, 'CustomerEat', event.customer))
-        # elif event.event_type == 'CustomerEat':
-        #     event.customer.eat()
-        #     bill_request_time = event.time + event.customer.eat_time
-        #     self.event_queue.add_event(Event(bill_request_time, 'CustomerRequestBill', event.customer))
-        # elif event.event_type == 'CustomerRequestBill':
-        #     waiter = self.find_idle_waiter()
-        #     if waiter:
-        #         waiter.give_bill(event.customer)
-        #         bill_wait_time = event.time + event.customer.bill_wait_time
-        #         self.event_queue.add_event(Event(bill_wait_time, 'CustomerPayAndLeave', event.customer, waiter))
-        # elif event.event_type == 'CustomerPayAndLeave':
-        #     event.customer.pay_and_leave()
-        #     self.total_tips += event.customer.tip  # Update total_tips when a customer pays and leaves
-        #     self.cleanup(event.customer)
-
-    # def assign_table(self, customer):
-    #     for table in self.tables:
-    #         if not table.is_occupied:
-    #             table.occupy(customer)
-    #             customer.table = table
-    #             customer_think_time = random_time()
-    #             self.event_queue.add_event(Event(customer_think_time, 'CustomerOrder', customer))
-    #             return
-
-    # def find_idle_waiter(self):
-    #     for waiter in self.waiters:
-    #         if waiter.state == 'idle':
-    #             return waiter
-    #     return None
-
-    # def cleanup(self, customer):
-    #     customer.table.vacate()
-    #     self.customers.remove(customer)
+    def get_available_table(self):
+        for table in self.tables:
+            if table.is_available:
+                return table
+        return None

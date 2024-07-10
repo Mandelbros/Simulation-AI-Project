@@ -4,9 +4,9 @@ from src.events.events import Event
 
 class EventQueue:
     def __init__(self):
-        self.events:List[Event] = []
+        self.events: List[Event] = []
 
-    def add_event(self, event:Event):
+    def add_event(self, event: Event):
         heapq.heappush(self.events, event)
 
     def next_event(self):

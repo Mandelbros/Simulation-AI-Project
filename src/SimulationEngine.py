@@ -1,14 +1,15 @@
 import random
 from src.Restaurant import Restaurant
 from src.events.EventQueue import EventQueue
-from src.events.events import CustomerArrives
+from src.events.events import *
 from src.agents.Customer import Customer
+from src.Table import Table
 
 class SimulationEngine:
     def __init__(self, duration, lambda_rate, restaurant_grid, waiter_amount, verbose=False):
         self.duration = duration
-        self.restaurant:Restaurant = Restaurant(restaurant_grid, waiter_amount)
-        self.event_queue:EventQueue = EventQueue()
+        self.restaurant: Restaurant = Restaurant(restaurant_grid, waiter_amount)
+        self.event_queue: EventQueue = EventQueue()
         self.current_time = 0
         self.verbose = verbose
         self.generate_customer_arrivals(lambda_rate)
@@ -32,7 +33,7 @@ class SimulationEngine:
             inter_arrival_time = round(random.expovariate(lambda_rate))
             current_time += inter_arrival_time
             if current_time < self.duration:
-                customer = Customer(customer_id)
+                customer = Customer(customer_id, self.restaurant.entry_door.position)
                 customer_id += 1
                 arrival_event = CustomerArrives(current_time, customer)
                 self.event_queue.add_event(arrival_event)
@@ -45,6 +46,19 @@ class SimulationEngine:
                 print("Time:", event.time, "Event:", type(event).__name__)
             
             self.current_time = event.time
-            self.restaurant.process_event(event)
+            self.process_event(event)
             
         return self.restaurant.total_tips  # Return the total tips collected during the simulation
+
+    def process_event(self, event: Event):
+        if isinstance(event, CustomerArrives):
+            customer: Customer = event.customer
+            table: Table = self.restaurant.get_available_table()
+            if table == None:
+                customer.start_waiting(event.time)
+            else:
+                table.is_available = False
+                path = self.restaurant.path_matrix[self.restaurant.entry_door.id][table.id]
+                customer.start_waiting(path, event.time)
+                self.event_queue.add_event(CustomerSits(event.time + len(path) - 1, customer))
+        # ...
