@@ -1,9 +1,17 @@
 from typing import List
+from enum import Enum, auto
 from src.events.events import Event, CustomerArrives
 from src.utils.utils import Place, Position
 from src.Kitchen import Kitchen
 from src.agents.Waiter import Waiter
 from src.Table import Table
+
+class PlaceType(Enum):
+    WALL = auto()
+    FLOOR = auto()
+    TABLE = auto()
+    KITCHEN = auto()
+    ENTRY_DOOR = auto()
 
 class Restaurant: 
     def __init__(self, restaurant_grid, waiter_amount):
@@ -33,11 +41,11 @@ class Restaurant:
         for i, row in enumerate(self.restaurant_grid):
             for j, cell in enumerate(row):
                 position = Position(i, j)
-                if cell == 4:
+                if cell == PlaceType.ENTRY_DOOR:
                     self.entry_door_position = Place(0, position)
-                elif cell == 3:
+                elif cell == PlaceType.KITCHEN:
                     self.kitchen = Kitchen(1, position)
-                elif cell == 2:
+                elif cell == PlaceType.TABLE:
                     self.tables.append(Table(len(self.tables) + 2, position))
 
     def get_path(self, start_position: Position, end_position: Position):
@@ -64,7 +72,7 @@ class Restaurant:
                 row, col = position.row + dr, position.col + dc
                 if 0 <= row < len(self.restaurant_grid) and 0 <= col < len(self.restaurant_grid[0]):
                     next_position = Position(row, col)
-                    if next_position not in visited and (self.restaurant_grid[row][col] == 1 or next_position == end_position):
+                    if next_position not in visited and (self.restaurant_grid[row][col] == PlaceType.FLOOR or next_position == end_position):
                         queue.append(next_position)
                         visited.add(next_position)
                         path[next_position] = path[position] + [next_position]
