@@ -1,24 +1,37 @@
 from src.events.events import Event, CustomerArrives
+from src.utils.utils import Position
+from src.Kitchen import Kitchen
+from src.agents.Waiter import Waiter
 
 class Restaurant: 
-    def __init__(self, restaurant_grid, table_amount, waiter_amount):
-        # self.tables = [Table(i) for i in range(num_tables)]
-        # self.waiters = [Waiter(i) for i in range(num_waiters)]
-        # self.kitchen = Kitchen()
+    def __init__(self, restaurant_grid, waiter_amount):
         self.restaurant_grid = restaurant_grid
-        self.table_amount = table_amount
         self.waiter_amount = waiter_amount
         self.total_tips = 0  # Add total_tips attribute
+        self.path_matrix = None
+        self.entry_door_position: Position = None
+        self.kitchen = None
+        self.tables = None 
+        self.waiters = [Waiter(i) for i in range(waiter_amount)]
+        self.init_places()
+        self.fill_path_matrix()
 
-    # def add_customer(self, customer, arrival_time):
-    #     self.customers.append(customer)
-    #     event = Event(arrival_time, 'CustomerArrives', customer)
-    #     self.event_queue.add_event(event)
+    def init_places():
+        pass
 
-    def process_event(self, event:Event):
+    def get_path(self, start_position: Position, end_position: Position):
+        # Implement your pathfinding algorithm here
+        pass
+
+    def fill_path_matrix(self):
+        pass
+
+    def process_event(self, event: Event):
         if isinstance(event, CustomerArrives):
             pass
             # self.assign_table(event.customer)
+
+
         # elif event.event_type == 'CustomerOrder':
         #     waiter = self.find_idle_waiter()
         #     if waiter:

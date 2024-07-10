@@ -5,20 +5,31 @@ from src.events.events import CustomerArrives
 from src.agents.Customer import Customer
 
 class SimulationEngine:
-    def __init__(self, duration, lambda_rate, restaurant_grid, table_amount, waiter_amount, verbose=False):
+    def __init__(self, duration, lambda_rate, restaurant_grid, waiter_amount, verbose=False):
         self.duration = duration
-        self.restaurant:Restaurant = Restaurant(restaurant_grid, table_amount, waiter_amount)
+        self.restaurant:Restaurant = Restaurant(restaurant_grid, waiter_amount)
         self.event_queue:EventQueue = EventQueue()
         self.current_time = 0
         self.verbose = verbose
         self.generate_customer_arrivals(lambda_rate)
     
     def generate_customer_arrivals(self, lambda_rate):
+        """
+        This method generates customer arrival events based on a Poisson process.
+        The inter-arrival times are exponentially distributed with a rate parameter `lambda_rate`.
+        Each customer is assigned a unique ID and an arrival event is created and added to the event queue.
+        
+        Parameters:
+        lambda_rate (float): The rate parameter for the exponential distribution used to generate inter-arrival times.
+        
+        Returns:
+        None
+        """
         current_time = 0
         customer_id = 1
 
         while current_time < self.duration:
-            inter_arrival_time = random.expovariate(lambda_rate)
+            inter_arrival_time = round(random.expovariate(lambda_rate))
             current_time += inter_arrival_time
             if current_time < self.duration:
                 customer = Customer(customer_id)

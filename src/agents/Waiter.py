@@ -1,4 +1,6 @@
-import Agent
+from src.agents.Agent import Agent
 
 class Waiter(Agent):
-    pass
+    def __init__(self, id):
+        self.id = id
+        

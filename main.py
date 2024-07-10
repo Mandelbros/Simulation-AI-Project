@@ -12,8 +12,7 @@ with open(os.path.join(dir_path, 'config.json')) as f:
 simulation_engine = SimulationEngine(
     duration=config['simulation_duration'],
     lambda_rate=config['arrival_rate'],
-    restaurant_grid=config['restaurant_grid'],
-    table_amount=config['number_of_tables'],
+    restaurant_grid=config['restaurant_grid'], 
     waiter_amount=config['number_of_waiters'],
     verbose=True
 )
