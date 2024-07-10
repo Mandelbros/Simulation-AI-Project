@@ -4,6 +4,7 @@ from src.events.EventQueue import EventQueue
 from src.events.events import *
 from src.agents.Customer import Customer
 from src.Table import Table
+from random import randint
 
 class SimulationEngine:
     def __init__(self, duration, lambda_rate, restaurant_grid, waiter_amount, verbose=False):
@@ -54,11 +55,15 @@ class SimulationEngine:
         if isinstance(event, CustomerArrives):
             customer: Customer = event.customer
             table: Table = self.restaurant.get_available_table()
-            if table == None:
+            if table is None:
                 customer.start_waiting(event.time)
             else:
                 table.is_available = False
                 path = self.restaurant.path_matrix[self.restaurant.entry_door.id][table.id]
                 customer.start_waiting(path, event.time)
                 self.event_queue.add_event(CustomerSits(event.time + len(path) - 1, customer))
+        elif isinstance(event, CustomerSits):
+            customer: Customer = event.customer
+            decision_time = randint(10,300)  # config
+            self.event_queue.add_event(CustomerOrders(event.time + decision_time, customer))
         # ...
