@@ -1,11 +1,12 @@
 from typing import List
-from enum import Enum, auto
 from src.utils.utils import Place, Position
 from src.Kitchen import Kitchen
 from src.agents.Waiter import Waiter
 from src.Table import Table
+from src.Dish import Dish
 
 class PlaceType:
+    # config
     WALL = 0
     FLOOR = 1
     TABLE = 2
@@ -24,6 +25,7 @@ class Restaurant:
         self.init_places()
         self.waiters: List[Waiter] = [Waiter(i, self.kitchen.position) for i in range(waiter_amount)]
         self.fill_path_matrix()
+        self.dishes: List[Dish] = [Dish(0, 600)] # config
 
     def init_places(self): 
         """
@@ -43,7 +45,7 @@ class Restaurant:
                 if cell == PlaceType.ENTRY_DOOR:
                     self.entry_door = Place(0, position)
                 elif cell == PlaceType.KITCHEN:
-                    self.kitchen = Kitchen(1, position)
+                    self.kitchen = Kitchen(1, position, 3) # config
                 elif cell == PlaceType.TABLE:
                     self.tables.append(Table(len(self.tables) + 2, position, True))
 

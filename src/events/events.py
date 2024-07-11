@@ -1,5 +1,7 @@
 from src.agents.Customer import Customer
 from src.agents.Waiter import Waiter
+from src.Dish import Dish
+from src.Order import Order
 
 class Event:
     def __init__(self, time):
@@ -46,10 +48,11 @@ class WaiterTakesOrder(Event):
     """
         Un mesero termina de tomar una orden de un cliente.
     """
-    def __init__(self, time, waiter: Waiter, customer: Customer):
+    def __init__(self, time, waiter: Waiter, customer: Customer, dish: Dish):
         super().__init__(time)
         self.waiter = waiter
         self.customer = customer
+        self.dish = dish
 
 class WaiterDeliversDish(Event):
     """
@@ -114,3 +117,11 @@ class CustomerLeaves(Event):
     def __init__(self, time, customer: Customer):
         super().__init__(time)
         self.customer = customer
+
+class KitchenPreparesOrder(Event):
+    """
+        La cocina termina de preparar una orden.
+    """
+    def __init__(self, time, order: Order):
+        super().__init__(time)
+        self.order = order
