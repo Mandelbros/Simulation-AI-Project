@@ -198,6 +198,29 @@ class SimulationEngine:
         
         elif isinstance(event, KitchenPreparesOrder):
             # La cocina termina de preparar una orden.
-            order = event.order
+            order: Order = event.order
             self.restaurant.kitchen.finish_order(order, event.time, self.verbose)
+        
+            for waiter in self.restaurant.waiters:
+                if waiter.is_free():
+                    order = self.restaurant.kitchen.take_next_prepared_order()
+                    request = DeliverDish(order)
+                    waiter.add_dish(order, event.time, self.verbose)
+                    waiter.add_request(request, event.time, self.verbose)
+                    self.process_next_request(waiter, self.restaurant.kitchen.id, event.time)
+                    break
+        
+        elif isinstance(event, WaiterDeliversDish):
+            # Un mesero llega a una mesa y le entrega el plato ordenado al cliente, 
+            waiter: Waiter = event.waiter
+            customer: Customer = event.customer
+
+            waiter.stop_walking(event.time, self.verbose)
+            customer.stop_waiting(event.time, self.verbose)
+
+            waiter.finish_next_request(event.time, self.verbose)
+            self.process_next_request(waiter, customer.table_id, event.time)
+
+            eating_time = random.randint(600, 1200) # config
+            self.event_queue.add_event(CustomerFinishesEating(event.time + eating_time, customer))
         # ...
