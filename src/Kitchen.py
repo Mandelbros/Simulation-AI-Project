@@ -26,5 +26,9 @@ class Kitchen(Place):
                
     def finish_order(self, order: Order, time, verbose):
         self.in_progress -= 1
+        self.prepared_orders.append(order)
         if verbose:
             print(f'\tThe kitchen finished cooking {order}, at time {time}.')
+    
+    def take_next_prepared_order(self):
+        return self.prepared_orders.pop(0)

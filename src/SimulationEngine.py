@@ -55,21 +55,33 @@ class SimulationEngine:
 
     def process_next_request(self, waiter: Waiter, place_id, time):
         if waiter.is_free():
+            # si no tiene nada que hacer, regresa a la cocina
             waiter.add_request(ReturnToKitchen(), time, self.verbose)
             self.process_next_request(waiter, place_id, time)
         else:
+            # en caso contrario, procesa el siguiente request
             request = waiter.next_request()
+
             if isinstance(request, TakeOrder):
                 path = self.restaurant.path_matrix[place_id][request.customer.table_id]
                 waiter.start_walking(path, time, self.verbose)
                 # crea un evento WaiterStartsTakingOrder
                 self.event_queue.add_event(WaiterStartsTakingOrder(time + len(path) - 1, waiter, request.customer))
+            
             elif isinstance(request, ReturnToKitchen):
                 path = self.restaurant.path_matrix[place_id][self.restaurant.kitchen.id]
                 waiter.start_walking(path, time, self.verbose)
+                # crea un evento WaiterReturnsToKitchen
                 self.event_queue.add_event(WaiterReturnsToKitchen(time + len(path) - 1, waiter))
+            
             elif isinstance(request, DeliverDish):
-                pass
+                order: Order = request.order
+                customer: Customer = order.customer
+                path = self.restaurant.path_matrix[place_id][customer.table_id]
+                waiter.start_walking(path, time, self.verbose)
+                # crea un evento WaiterDeliversDish
+                self.event_queue.add_event(WaiterDeliversDish(time + len(path) - 1, waiter, customer))
+            
             elif isinstance(request, CollectBill):
                 pass
 
@@ -161,11 +173,31 @@ class SimulationEngine:
             waiter: Waiter = event.waiter
             waiter.stop_walking(event.time, self.verbose)
             
+            # termina esta encomienda
+            waiter.finish_next_request(event.time, self.verbose)
+            
             # deja las órdenes que tenía en el inventario
-            for order in waiter.orders_queue:
+            while len(waiter.orders_queue) > 0:
+                order = waiter.orders_queue.pop(0)
                 self.restaurant.kitchen.add_order(order, event.time, self.verbose)
                 if self.restaurant.kitchen.has_capacity():
                     self.restaurant.kitchen.start_next_order(event.time, self.verbose)
                     cooking_time = order.dish.get_new_prob_cooking_time()
                     self.event_queue.add_event(KitchenPreparesOrder(event.time + cooking_time, order))
+
+            # recoge las órdenes preparadas que pueda
+            while len(self.restaurant.kitchen.prepared_orders) > 0 and waiter.has_capacity():
+                order = self.restaurant.kitchen.take_next_prepared_order()
+                request = DeliverDish(order)
+                waiter.add_dish(order, event.time, self.verbose)
+                waiter.add_request(request, event.time, self.verbose)
+
+            # procesa el siguiente request del mesero
+            if not waiter.is_free():
+                self.process_next_request(waiter, self.restaurant.kitchen.id, event.time)
+        
+        elif isinstance(event, KitchenPreparesOrder):
+            # La cocina termina de preparar una orden.
+            order = event.order
+            self.restaurant.kitchen.finish_order(order, event.time, self.verbose)
         # ...

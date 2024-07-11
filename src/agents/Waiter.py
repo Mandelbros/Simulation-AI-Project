@@ -10,7 +10,8 @@ class Waiter(Agent):
         super().__init__(id, position, "Waiter")
         self.requests_queue: List[Request] = []
         self.orders_queue: List[Order] = []
-        self.dishes: List[Dish] = []
+        self.dishes: List[Order] = []
+        self.capacity = 2 # config
     
     def add_request(self, request: Request, time, verbose):
         self.requests_queue.append(request)
@@ -30,8 +31,16 @@ class Waiter(Agent):
         if verbose:
             print(f'\tWaiter {self.id} received new {order}, at time {time}.')
 
+    def add_dish(self, order: Order, time, verbose):
+        self.dishes.append(order)
+        if verbose:
+            print(f'\tWaiter {self.id} took prepared {order}, at time {time}.')
+
     def is_free(self):
         return len(self.requests_queue) == 0
+
+    def has_capacity(self):
+        return self.capacity > len(self.dishes)
     
     def __str__(self):
         return f"Waiter {self.id}"
