@@ -51,6 +51,8 @@ class SimulationEngine:
             self.current_time = event.time
             self.process_event(event)
             
+        if self.verbose:
+            print("Total tips:", self.restaurant.total_tips)
         return self.restaurant.total_tips  # Return the total tips collected during the simulation
     
     def closest_waiter(self, position, time):
@@ -180,7 +182,7 @@ class SimulationEngine:
             # procesa el siguiente request del mesero
             self.process_next_request(waiter, customer.table_id, event.time)
         
-        elif isinstance(event, WaiterReturnsToKitchen):
+        elif isinstance(event, WaiterReturnsToKitchen) or isinstance(event, WaiterCleansTable):
             # Un mesero regresa a la cocina.
             waiter: Waiter = event.waiter
             waiter.stop_walking(event.time, self.verbose)
@@ -265,4 +267,32 @@ class SimulationEngine:
             paying_time = random.randint(60, 180) # config
             # crea un evento CustomerPays
             self.event_queue.add_event(CustomerPays(event.time + paying_time, customer, waiter))
-        # ...
+
+        elif isinstance(event, CustomerPays):
+            # un cliente termina de pagarle a un mesero
+            customer: Customer = event.customer
+            waiter: Waiter = event.waiter
+
+            # deja una propina
+            self.restaurant.total_tips += (customer.leave_tip(event.time, self.verbose))
+
+            # se levanta de la mesa y empieza a caminar hacia la salida
+            customer_path = self.restaurant.path_matrix[customer.table_id][self.restaurant.entry_door.id]
+            customer.start_walking(customer_path, event.time, self.verbose)
+
+            # crea un evento CustomerLeaves
+            self.event_queue.add_event(CustomerLeaves(event.time + len(customer_path) - 1, customer))
+
+            # el mesero limpia la mesa y regresa con los platos y el pago a la cocina 
+            waiter_path = self.restaurant.path_matrix[customer.table_id][self.restaurant.kitchen.id]
+            waiter.start_walking(waiter_path, event.time, self.verbose)
+
+            # crea un evento WaiterCleansTable
+            self.event_queue.add_event(WaiterCleansTable(event.time + len(waiter_path) - 1, waiter))
+        
+        elif isinstance(event, CustomerLeaves):
+            # Un cliente llega a la salida y se va del restaurante.
+            customer: Customer = event.customer
+
+            customer.stop_walking(event.time, self.verbose)
+            self.restaurant.tables[customer.table_id - 2].is_available = True

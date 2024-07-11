@@ -84,9 +84,10 @@ class WaiterDeliversBill(Event):
 
 class CustomerPays(Event):
     """
-        Un cliente termina de pagarle a un mesero, se levanta de la mesa 
+        Un cliente termina de pagarle a un mesero, deja una propina, se levanta de la mesa 
         y empieza a caminar hacia la salida (crea un evento CustomerLeaves)
-        y el mesero empieza a limpiar la mesa (crea un evento WaiterCleansTable).
+        y el mesero limpia la mesa y regresa con los platos y el pago a la cocina 
+        (crea un evento WaiterCleansTable).
     """
     def __init__(self, time, customer: Customer, waiter: Waiter):
         super().__init__(time)
@@ -95,8 +96,7 @@ class CustomerPays(Event):
 
 class WaiterCleansTable(Event):
     """
-        Un mesero termina de limpiar una mesa y empieza a regresar a la cocina 
-        para dejar los platos y la cuenta pagada (crea un evento WaiterReturnsToKitchen).
+        Un mesero regresar a la cocina y deja los platos y la cuenta pagada
     """
     def __init__(self, time, waiter: Waiter):
         super().__init__(time)
