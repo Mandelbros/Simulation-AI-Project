@@ -1,3 +1,5 @@
+from math import dist
+
 class Position:
     def __init__(self, row, col) -> None:
         self.row = row
@@ -17,6 +19,12 @@ class Position:
     def __repr__(self):
         return f"({self.row}, {self.col})"
     
+    def euclidean_dist_to(self, other):
+        try:
+            return dist((self.row, self.col), (other.row, other.col))
+        except:
+            return dist((self.row, self.col), (other.position.row, other.position.col))
+
 class Place:
     def __init__(self, id, position: Position) -> None:
         self.id = id

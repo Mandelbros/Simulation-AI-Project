@@ -53,17 +53,65 @@ class SimulationEngine:
 
     def process_event(self, event: Event):
         if isinstance(event, CustomerArrives):
+            # Llega un cliente al restaurante
             customer: Customer = event.customer
             table: Table = self.restaurant.get_available_table()
-            if table is None:
-                customer.start_waiting(event.time)
-            else:
+
+            if table is not None:
+                # si hay mesa libre empieza a caminar hacia ella (crea un evento CustomerSits), 
                 table.is_available = False
+                customer.table_id = table.id
                 path = self.restaurant.path_matrix[self.restaurant.entry_door.id][table.id]
-                customer.start_waiting(event.time)
+                customer.start_walking(path, event.time, self.verbose)
                 self.event_queue.add_event(CustomerSits(event.time + len(path) - 1, customer))
+            else:
+                # si no espera hasta que se desocupe una mesa (en algún evento CustomerLeaves)
+                customer.start_waiting(event.time, self.verbose)
+                path = None
+
         elif isinstance(event, CustomerSits):
+            # Un cliente termina de caminar, se sienta en una mesa
             customer: Customer = event.customer
+            customer.stop_walking(event.time, self.verbose)
+
+            # y empieza a pensar en qué ordenar
             decision_time = randint(10,300)  # config
+
+            # crea un evento CustomerOrders
             self.event_queue.add_event(CustomerOrders(event.time + decision_time, customer))
+
+        elif isinstance(event, CustomerOrders):
+            # Un cliente decide qué ordenar y llama a un mesero
+            customer: Customer = event.customer
+            customer.start_waiting(event.time, self.verbose)
+
+            best_dist = 100000000000
+            for waiter in self.restaurant.waiters:
+                # calcula la distancia del cliente al mesero
+                dist = customer.position.euclidean_dist_to(waiter.get_position_at(event.time))
+                # se queda con el mesero más cercano (con distancia euclidiana)
+                if best_dist > dist:
+                    best_dist = dist
+                    called_waiter = waiter
+
+            if len(called_waiter.dests_queue) == 0: # si el mesero no tiene nada que hacer
+                # debe estar en la cocina, desde la que empieza a caminar hacia la mesa del cliente
+                path = self.restaurant.path_matrix[self.restaurant.kitchen.id][customer.table_id]
+                called_waiter.start_walking(path, event.time, self.verbose)
+                # crea un evento WaiterStartsTakingOrder
+                self.event_queue.add_event(WaiterStartsTakingOrder(event.time + len(path) - 1, called_waiter, customer))
+            called_waiter.add_dest(customer.table_id)
+
+        elif isinstance(event, WaiterStartsTakingOrder):
+            # Un mesero llega a una mesa 
+            customer: Customer = event.customer
+            waiter: Waiter = event.waiter
+            waiter.stop_walking(event.time, self.verbose)
+
+            # y empieza a tomar una orden de un cliente 
+            customer.stop_waiting(event.time, self.verbose)
+            ordering_time = randint(60, 300) # config
+
+            # crea un evento WaiterTakesOrder.
+            self.event_queue.add_event(WaiterTakesOrder(event.time + ordering_time, waiter, customer))
         # ...
