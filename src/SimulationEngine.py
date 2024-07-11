@@ -52,6 +52,17 @@ class SimulationEngine:
             self.process_event(event)
             
         return self.restaurant.total_tips  # Return the total tips collected during the simulation
+    
+    def closest_waiter(self, position, time):
+        best_dist = 100000000000
+        for waiter in self.restaurant.waiters:
+            # calcula la distancia de la posición al mesero
+            dist = position.euclidean_dist_to(waiter.get_position_at(time))
+            # se queda con el mesero más cercano (con distancia euclidiana)
+            if best_dist > dist:
+                best_dist = dist
+                called_waiter = waiter
+        return called_waiter
 
     def process_next_request(self, waiter: Waiter, place_id, time):
         if waiter.is_free():
@@ -63,10 +74,11 @@ class SimulationEngine:
             request = waiter.next_request()
 
             if isinstance(request, TakeOrder):
-                path = self.restaurant.path_matrix[place_id][request.customer.table_id]
+                customer: Customer = request.customer
+                path = self.restaurant.path_matrix[place_id][customer.table_id]
                 waiter.start_walking(path, time, self.verbose)
                 # crea un evento WaiterStartsTakingOrder
-                self.event_queue.add_event(WaiterStartsTakingOrder(time + len(path) - 1, waiter, request.customer))
+                self.event_queue.add_event(WaiterStartsTakingOrder(time + len(path) - 1, waiter, customer))
             
             elif isinstance(request, ReturnToKitchen):
                 path = self.restaurant.path_matrix[place_id][self.restaurant.kitchen.id]
@@ -83,7 +95,11 @@ class SimulationEngine:
                 self.event_queue.add_event(WaiterDeliversDish(time + len(path) - 1, waiter, customer))
             
             elif isinstance(request, CollectBill):
-                pass
+                customer: Customer = request.customer
+                path = self.restaurant.path_matrix[place_id][customer.table_id]
+                waiter.start_walking(path, time, self.verbose)
+                # crea un evento WaiterDeliversBill
+                self.event_queue.add_event(WaiterDeliversBill(time + len(path) - 1, waiter, customer))
 
     def process_event(self, event: Event):
         if isinstance(event, CustomerArrives):
@@ -117,23 +133,19 @@ class SimulationEngine:
         elif isinstance(event, CustomerOrders):
             # Un cliente decide qué ordenar y llama a un mesero
             customer: Customer = event.customer
-            customer.start_waiting(event.time, self.verbose)
 
-            best_dist = 100000000000
-            for waiter in self.restaurant.waiters:
-                # calcula la distancia del cliente al mesero
-                dist = customer.position.euclidean_dist_to(waiter.get_position_at(event.time))
-                # se queda con el mesero más cercano (con distancia euclidiana)
-                if best_dist > dist:
-                    best_dist = dist
-                    called_waiter = waiter
+            # busca al mesero más cercano
+            called_waiter = self.closest_waiter(customer.position, event.time)
 
-            # si el mesero no tiene nada que hacer
+            # se le asigna el request de tomar la orden
             request = TakeOrder(customer)
             called_waiter_is_free = called_waiter.is_free()
             called_waiter.add_request(request, event.time, self.verbose)
+            customer.start_waiting(event.time, self.verbose)
+
+            # si el mesero no tiene nada que hacer
             if called_waiter_is_free:
-                # si no tiene nada que hacer, debe estar en la cocina
+                # debe estar en la cocina
                 self.process_next_request(called_waiter, self.restaurant.kitchen.id, event.time)
 
         elif isinstance(event, WaiterStartsTakingOrder):
@@ -223,4 +235,34 @@ class SimulationEngine:
 
             eating_time = random.randint(600, 1200) # config
             self.event_queue.add_event(CustomerFinishesEating(event.time + eating_time, customer))
+        
+        elif isinstance(event, CustomerFinishesEating):
+            # Un cliente termina de comer y llama a un mesero para que recoja la cuenta.
+            customer: Customer = event.customer
+
+            # busca al mesero más cercano
+            called_waiter = self.closest_waiter(customer.position, event.time)
+
+            # se le asigna el request de cobrar la cuenta
+            request = CollectBill(customer)
+            called_waiter_is_free = called_waiter.is_free()
+            called_waiter.add_request(request, event.time, self.verbose)
+            customer.start_waiting(event.time, self.verbose)
+
+            # si el mesero no tiene nada que hacer
+            if called_waiter_is_free:
+                # debe estar en la cocina
+                self.process_next_request(called_waiter, self.restaurant.kitchen.id, event.time)
+
+        elif isinstance(event, WaiterDeliversBill):
+            # Un mesero llega a una mesa y le entrega la cuenta al cliente, el cual empieza a pagar
+            waiter: Waiter = event.waiter
+            customer: Customer = event.customer
+
+            waiter.stop_walking(event.time, self.verbose)
+            customer.stop_waiting(event.time, self.verbose)
+
+            paying_time = random.randint(60, 180) # config
+            # crea un evento CustomerPays
+            self.event_queue.add_event(CustomerPays(event.time + paying_time, customer, waiter))
         # ...
