@@ -1,9 +1,9 @@
 from src.agents.Agent import Agent
-from utils.utils import Position
+from src.utils.utils import Position
 
 class Customer(Agent):
     def __init__(self, id, position: Position):
-        super.__init__(id, position)
+        super().__init__(id, position)
         self.total_wating_time = 0
         self.cur_waiting_start_time = None
 

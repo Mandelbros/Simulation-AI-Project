@@ -5,12 +5,12 @@ from src.Kitchen import Kitchen
 from src.agents.Waiter import Waiter
 from src.Table import Table
 
-class PlaceType(Enum):
-    WALL = auto()
-    FLOOR = auto()
-    TABLE = auto()
-    KITCHEN = auto()
-    ENTRY_DOOR = auto()
+class PlaceType:
+    WALL = 0
+    FLOOR = 1
+    TABLE = 2
+    KITCHEN = 3
+    ENTRY_DOOR = 4
 
 class Restaurant: 
     def __init__(self, restaurant_grid, waiter_amount):
@@ -45,7 +45,7 @@ class Restaurant:
                 elif cell == PlaceType.KITCHEN:
                     self.kitchen = Kitchen(1, position)
                 elif cell == PlaceType.TABLE:
-                    self.tables.append(Table(len(self.tables) + 2, position))
+                    self.tables.append(Table(len(self.tables) + 2, position, True))
 
     def get_path(self, start_position: Position, end_position: Position):
         """

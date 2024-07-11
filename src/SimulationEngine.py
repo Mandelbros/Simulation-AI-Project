@@ -60,7 +60,7 @@ class SimulationEngine:
             else:
                 table.is_available = False
                 path = self.restaurant.path_matrix[self.restaurant.entry_door.id][table.id]
-                customer.start_waiting(path, event.time)
+                customer.start_waiting(event.time)
                 self.event_queue.add_event(CustomerSits(event.time + len(path) - 1, customer))
         elif isinstance(event, CustomerSits):
             customer: Customer = event.customer
