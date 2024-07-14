@@ -14,3 +14,6 @@ class EventQueue:
     
     def is_empty(self):
         return len(self.events) == 0
+    
+    def clear(self):
+        self.events = []

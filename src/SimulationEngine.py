@@ -9,13 +9,14 @@ from src.Table import Table
 from src.requests.requests import *
 
 class SimulationEngine:
-    def __init__(self, duration, lambda_rate, restaurant_grid, waiter_amount, verbose=False):
+    def __init__(self, duration, arrival_rate, waiter_amount, verbose=False):
         self.duration = duration
-        self.restaurant: Restaurant = Restaurant(restaurant_grid, waiter_amount)
+        self.arrival_rate = arrival_rate
+        self.waiter_amount = waiter_amount
+        self.restaurant = None
         self.event_queue: EventQueue = EventQueue()
         self.current_time = 0
         self.verbose = verbose
-        self.generate_customer_arrivals(lambda_rate)
     
     def generate_customer_arrivals(self, lambda_rate):
         """
@@ -41,7 +42,11 @@ class SimulationEngine:
                 arrival_event = CustomerArrives(current_time, customer)
                 self.event_queue.add_event(arrival_event)
 
-    def run(self):
+    def run(self, restaurant_grid):
+        self.event_queue.clear()        # deberia estar vacia, pero x si acaso
+        self.restaurant = Restaurant(restaurant_grid, self.waiter_amount)
+        self.generate_customer_arrivals(self.arrival_rate)
+
         while not self.event_queue.is_empty():
             event = self.event_queue.next_event()
 

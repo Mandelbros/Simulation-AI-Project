@@ -1,5 +1,13 @@
 from math import dist
 
+class PlaceType:
+    # config
+    WALL = 0
+    FLOOR = 1
+    TABLE = 2
+    KITCHEN = 3
+    ENTRY_DOOR = 4
+
 class Position:
     def __init__(self, row, col) -> None:
         self.row = row
