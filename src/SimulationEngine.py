@@ -19,7 +19,6 @@ class SimulationEngine:
         self.event_queue: EventQueue = EventQueue()
         self.current_time = 0
         self.verbose = verbose
-        self.generate_customer_arrivals(lambda_rate)
         self.tipping = FuzzyTip()
     
     def generate_customer_arrivals(self, lambda_rate):
@@ -48,6 +47,7 @@ class SimulationEngine:
 
     def run(self, restaurant_grid):
         self.event_queue.clear()        # deberia estar vacia, pero x si acaso
+        print(restaurant_grid)
         self.restaurant = Restaurant(restaurant_grid, self.waiter_amount)
         self.generate_customer_arrivals(self.arrival_rate)
 
