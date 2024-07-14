@@ -4,18 +4,11 @@ from src.Kitchen import Kitchen
 from src.agents.Waiter import Waiter
 from src.Table import Table
 from src.Dish import Dish
-
-class PlaceType:
-    # config
-    WALL = 0
-    FLOOR = 1
-    TABLE = 2
-    KITCHEN = 3
-    ENTRY_DOOR = 4
+from src.utils.utils import PlaceType
 
 class Restaurant: 
-    def __init__(self, restaurant_grid, waiter_amount):
-        self.restaurant_grid = restaurant_grid
+    def __init__(self, layout_grid, waiter_amount):
+        self.layout_grid = layout_grid
         self.waiter_amount = waiter_amount
         self.total_tips = 0  # Add total_tips attribute
         self.path_matrix = None
@@ -24,8 +17,8 @@ class Restaurant:
         self.tables: List[Table] = [] 
         self.init_places()
         self.waiters: List[Waiter] = [Waiter(i, self.kitchen.position) for i in range(waiter_amount)]
-        self.fill_path_matrix()
         self.dishes: List[Dish] = [Dish(0, 600)] # config
+        self.fill_path_matrix()
 
     def init_places(self): 
         """
@@ -39,7 +32,7 @@ class Restaurant:
         Returns:
         None
         """
-        for i, row in enumerate(self.restaurant_grid):
+        for i, row in enumerate(self.layout_grid):
             for j, cell in enumerate(row):
                 position = Position(i, j)
                 if cell == PlaceType.ENTRY_DOOR:
@@ -71,9 +64,9 @@ class Restaurant:
 
             for dr, dc in [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]:
                 row, col = position.row + dr, position.col + dc
-                if 0 <= row < len(self.restaurant_grid) and 0 <= col < len(self.restaurant_grid[0]):
+                if 0 <= row < len(self.layout_grid) and 0 <= col < len(self.layout_grid[0]):
                     next_position = Position(row, col)
-                    if next_position not in visited and (self.restaurant_grid[row][col] == PlaceType.FLOOR or next_position == end_position):
+                    if next_position not in visited and (self.layout_grid[row][col] == PlaceType.FLOOR or next_position == end_position):
                         queue.append(next_position)
                         visited.add(next_position)
                         path[next_position] = path[position] + [next_position]

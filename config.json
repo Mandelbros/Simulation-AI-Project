@@ -1,6 +1,6 @@
 {
-    "_comment": "0 - wall, 1 - floor, 2 - table, 3 - kitchen door, 4 - entry door",
-    "restaurant_grid": [
+    "_comment":"single simulation config",
+    "single_simulation_grid": [
         [0, 0, 0, 0, 0, 3, 0, 0, 0, 0],
         [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         [0, 1, 2, 1, 1, 1, 1, 2, 1, 0],
@@ -15,5 +15,24 @@
     "number_of_tables": 5,
     "number_of_waiters": 2,
     "simulation_duration": 3600,
-    "arrival_rate": 0.003
+    "arrival_rate": 0.003,
+
+    "__comment":"simulated annealing config",
+    "initial_temp":500,
+    "final_temp":0.01,
+    "alpha":0.95,
+    "max_iter":50,
+    "nights_per_layout":5,
+    "optimizer_grid": [
+        [0, 0, 0, 0, 0, 3, 0, 0, 0, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 0, 0, 0, 0, 4, 0, 0, 0, 0]
+    ]
 }
