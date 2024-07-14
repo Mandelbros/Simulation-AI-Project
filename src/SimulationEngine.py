@@ -1,3 +1,4 @@
+import math
 import random
 from src.Restaurant import Restaurant
 from src.events.EventQueue import EventQueue
@@ -7,6 +8,7 @@ from src.agents.Waiter import Waiter
 from src.Dish import Dish
 from src.Table import Table
 from src.requests.requests import *
+from src.fuzzy_logic import FuzzyTip 
 
 class SimulationEngine:
     def __init__(self, duration, lambda_rate, restaurant_grid, waiter_amount, verbose=False):
@@ -16,6 +18,7 @@ class SimulationEngine:
         self.current_time = 0
         self.verbose = verbose
         self.generate_customer_arrivals(lambda_rate)
+        self.tipping = FuzzyTip()
     
     def generate_customer_arrivals(self, lambda_rate):
         """
@@ -65,6 +68,37 @@ class SimulationEngine:
                 best_dist = dist
                 called_waiter = waiter
         return called_waiter
+    
+    def calc_dish_temperature(self, initial_temperature, room_temperature, time_passed):
+        """Calculates the current temperature of a dish using Newton's Law of Cooling.
+
+        Args:
+            initial_temperature: The initial temperature of the dish in degrees Celsius.
+            room_temperature: The temperature of the surrounding environment in degrees Celsius.
+            time_passed: The time that has passed since the initial temperature was measured, in seconds.
+
+        Returns:
+            The current temperature of the dish in degrees Celsius.
+        """
+        # Converting time to minutes
+        time_passed /= 60
+
+        # Assuming a typical cooling constant for food
+        cooling_constant = 0.05
+
+        # Calculate the temperature difference between the initial temperature and room temperature
+        temperature_difference = initial_temperature - room_temperature
+
+        # Apply Newton's Law of Cooling formula
+        current_temperature = room_temperature + temperature_difference * math.exp(-cooling_constant * time_passed)
+
+        return current_temperature
+    
+    def get_tip_percentage(self, waiting_time, food_temp):
+        return self.tipping.get_tip(waiting_time, food_temp)
+    
+    def get_tip(self, tip_percent, bill):
+        return bill * tip_percent / 100
 
     def process_next_request(self, waiter: Waiter, place_id, time):
         if waiter.is_free():
@@ -274,7 +308,10 @@ class SimulationEngine:
             waiter: Waiter = event.waiter
 
             # deja una propina
-            self.restaurant.total_tips += (customer.leave_tip(event.time, self.verbose))
+            tip_percent = self.get_tip_percentage(customer.total_wating_time, 70) # la temperatura en 70 temporalmente, TBD
+            tip = self.get_tip(tip_percent, 20)
+            customer.leave_tip(tip_percent, tip, event.time, self.verbose)
+            self.restaurant.total_tips += tip
 
             # se levanta de la mesa y empieza a caminar hacia la salida
             customer_path = self.restaurant.path_matrix[customer.table_id][self.restaurant.entry_door.id]
