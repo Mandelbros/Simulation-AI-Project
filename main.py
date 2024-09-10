@@ -37,7 +37,10 @@ optimizer = RestaurantOptimizer(
 )
 
 # Configuración inicial aleatoria
-initial_config = optimizer.random_initial_config(config['optimizer_grid'], num_tables=5)
+initial_config = optimizer.random_initial_config(
+    layout_grid=config['optimizer_grid'], 
+    num_tables=config['number_of_tables']
+)
 
 start_time = time.time()
 
