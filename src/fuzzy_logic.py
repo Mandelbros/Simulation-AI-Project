@@ -85,6 +85,8 @@ class FuzzyTip:
             self.lookup_table = pickle.load(f)
 
     def get_tip(self, waiting_time, food_temp):
+        if waiting_time > 3600:
+            waiting_time = 3600
         # Recuperar el valor precalculado de la tabla de búsqueda
         return self.lookup_table[(waiting_time, food_temp)]
     

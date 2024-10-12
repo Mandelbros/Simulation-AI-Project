@@ -3,28 +3,37 @@ from src.agents.Agent import Agent
 from src.utils.utils import Position
 from src.Order import Order
 from src.Dish import Dish
-from src.requests.requests import Request
+from src.tasks.tasks import Task
+from src.agents.rules import waiter_rules
 
 class Waiter(Agent):
     def __init__(self, id, position: Position):
         super().__init__(id, position, "Waiter")
-        self.requests_queue: List[Request] = []
+        self.tasks: List[Task] = []
         self.orders_queue: List[Order] = []
         self.dishes: List[Order] = []
         self.capacity = 2 # config
+        self.at_kitchen = True
+        self.dishes_at_kitchen = []
+        self.cur_task = None
     
-    def add_request(self, request: Request, time, verbose):
-        self.requests_queue.append(request)
+    def add_task(self, task: Task, time, verbose):
+        self.tasks.append(task)
         if verbose:
-            print(f'\tWaiter {self.id} received new {request}, at time {time}.')
+            print(f'\tWaiter {self.id} received new {task}, at time {time}.')
 
-    def next_request(self):
-        return self.requests_queue[0]
+    def decide_action(self, time, verbose):
+        for rule in waiter_rules:
+            rule.evaluate(self, time, verbose)
+    
+    def work_on_task(self, i):
+        self.cur_task = self.tasks.pop(i)
 
-    def finish_next_request(self, time, verbose):
-        request = self.requests_queue.pop(0)
+    def finish_cur_task(self, time, verbose):
+        task = self.cur_task
+        self.cur_task = None
         if verbose:
-            print(f'\tWaiter {self.id} finished {request}, at time {time}.')
+            print(f'\tWaiter {self.id} finished {task}, at time {time}.')
 
     def add_order(self, order: Order, time, verbose):
         self.orders_queue.append(order)
@@ -37,7 +46,7 @@ class Waiter(Agent):
             print(f'\tWaiter {self.id} took prepared {order}, at time {time}.')
 
     def is_free(self):
-        return len(self.requests_queue) == 0
+        return self.cur_task is None and len(self.tasks) == 0
 
     def has_capacity(self):
         return self.capacity > len(self.dishes)

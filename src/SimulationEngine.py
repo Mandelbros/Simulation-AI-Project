@@ -7,7 +7,7 @@ from src.agents.Customer import Customer
 from src.agents.Waiter import Waiter
 from src.Dish import Dish
 from src.Table import Table
-from src.requests.requests import *
+from src.tasks.tasks import *
 from src.fuzzy_logic import FuzzyTip 
 
 class SimulationEngine:
@@ -20,6 +20,7 @@ class SimulationEngine:
         self.current_time = 0
         self.verbose = verbose
         self.tipping = FuzzyTip()
+        self.customers_waiting_queue = []
     
     def generate_customer_arrivals(self, lambda_rate):
         """
@@ -106,42 +107,53 @@ class SimulationEngine:
     def get_tip(self, tip_percent, bill):
         return bill * tip_percent / 100
 
-    def process_next_request(self, waiter: Waiter, place_id, time):
-        if waiter.is_free():
-            # si no tiene nada que hacer, regresa a la cocina
-            waiter.add_request(ReturnToKitchen(), time, self.verbose)
-            self.process_next_request(waiter, place_id, time)
-        else:
-            # en caso contrario, procesa el siguiente request
-            request = waiter.next_request()
+    def process_next_task(self, waiter: Waiter, place_id, time, verbose):
+        # el camarero decide su acción
+        waiter.decide_action(time, verbose)
+        task = waiter.cur_task
 
-            if isinstance(request, TakeOrder):
-                customer: Customer = request.customer
-                path = self.restaurant.path_matrix[place_id][customer.table_id]
-                waiter.start_walking(path, time, self.verbose)
-                # crea un evento WaiterStartsTakingOrder
-                self.event_queue.add_event(WaiterStartsTakingOrder(time + len(path) - 1, waiter, customer))
-            
-            elif isinstance(request, ReturnToKitchen):
-                path = self.restaurant.path_matrix[place_id][self.restaurant.kitchen.id]
-                waiter.start_walking(path, time, self.verbose)
-                # crea un evento WaiterReturnsToKitchen
-                self.event_queue.add_event(WaiterReturnsToKitchen(time + len(path) - 1, waiter))
-            
-            elif isinstance(request, DeliverDish):
-                order: Order = request.order
-                customer: Customer = order.customer
-                path = self.restaurant.path_matrix[place_id][customer.table_id]
-                waiter.start_walking(path, time, self.verbose)
-                # crea un evento WaiterDeliversDish
-                self.event_queue.add_event(WaiterDeliversDish(time + len(path) - 1, waiter, customer))
-            
-            elif isinstance(request, CollectBill):
-                customer: Customer = request.customer
-                path = self.restaurant.path_matrix[place_id][customer.table_id]
-                waiter.start_walking(path, time, self.verbose)
-                # crea un evento WaiterDeliversBill
-                self.event_queue.add_event(WaiterDeliversBill(time + len(path) - 1, waiter, customer))
+        if isinstance(task, TakeDish):
+            order = task.order
+            for i in range(len(self.restaurant.kitchen.prepared_orders)):
+                if order == self.restaurant.kitchen.prepared_orders[i]:
+                    self.restaurant.kitchen.prepared_orders.pop(i)
+                    break
+            # toma el plato preparado de la cocina, termina esta tarea y busca otra
+            waiter.add_dish(order, time, verbose)
+            waiter.finish_cur_task(time, verbose)
+            self.process_next_task(waiter, place_id, time, verbose)
+
+        elif isinstance(task, TakeOrder):
+            customer: Customer = task.customer
+            path = self.restaurant.path_matrix[place_id][customer.table_id]
+            waiter.start_walking(path, time, self.verbose)
+            waiter.at_kitchen = False
+            # crea un evento WaiterStartsTakingOrder
+            self.event_queue.add_event(WaiterStartsTakingOrder(time + len(path) - 1, waiter, customer))
+        
+        elif isinstance(task, ReturnToKitchen):
+            path = self.restaurant.path_matrix[place_id][self.restaurant.kitchen.id]
+            waiter.start_walking(path, time, self.verbose)
+            waiter.at_kitchen = True
+            # crea un evento WaiterReturnsToKitchen
+            self.event_queue.add_event(WaiterReturnsToKitchen(time + len(path) - 1, waiter))
+        
+        elif isinstance(task, DeliverDish):
+            order: Order = task.order
+            customer: Customer = order.customer
+            path = self.restaurant.path_matrix[place_id][customer.table_id]
+            waiter.at_kitchen = True
+            waiter.start_walking(path, time, self.verbose)
+            # crea un evento WaiterDeliversDish
+            self.event_queue.add_event(WaiterDeliversDish(time + len(path) - 1, waiter, customer))
+        
+        elif isinstance(task, CollectBill):
+            customer: Customer = task.customer
+            path = self.restaurant.path_matrix[place_id][customer.table_id]
+            waiter.start_walking(path, time, self.verbose)
+            waiter.at_kitchen = True
+            # crea un evento WaiterDeliversBill
+            self.event_queue.add_event(WaiterDeliversBill(time + len(path) - 1, waiter, customer))
 
     def process_event(self, event: Event):
         if isinstance(event, CustomerArrives):
@@ -159,7 +171,7 @@ class SimulationEngine:
             else:
                 # si no espera hasta que se desocupe una mesa (en algún evento CustomerLeaves)
                 customer.start_waiting(event.time, self.verbose)
-                path = None
+                self.customers_waiting_queue.append(customer)
 
         elif isinstance(event, CustomerSits):
             # Un cliente termina de caminar, se sienta en una mesa
@@ -179,16 +191,16 @@ class SimulationEngine:
             # busca al mesero más cercano
             called_waiter = self.closest_waiter(customer.position, event.time)
 
-            # se le asigna el request de tomar la orden
-            request = TakeOrder(customer)
+            # se le asigna el task de tomar la orden
+            task = TakeOrder(customer)
             called_waiter_is_free = called_waiter.is_free()
-            called_waiter.add_request(request, event.time, self.verbose)
+            called_waiter.add_task(task, event.time, self.verbose)
             customer.start_waiting(event.time, self.verbose)
 
             # si el mesero no tiene nada que hacer
             if called_waiter_is_free:
                 # debe estar en la cocina
-                self.process_next_request(called_waiter, self.restaurant.kitchen.id, event.time)
+                self.process_next_task(called_waiter, self.restaurant.kitchen.id, event.time, self.verbose)
 
         elif isinstance(event, WaiterStartsTakingOrder):
             # Un mesero llega a una mesa 
@@ -211,7 +223,7 @@ class SimulationEngine:
             dish: Dish = event.dish
 
             # termina esta encomienda
-            waiter.finish_next_request(event.time, self.verbose)
+            waiter.finish_cur_task(event.time, self.verbose)
 
             # añade la orden al inventario
             waiter.add_order(Order(dish, customer), event.time, self.verbose)
@@ -219,16 +231,18 @@ class SimulationEngine:
             # el cliente empieza a esperar por la comida
             customer.start_waiting(event.time, self.verbose)
 
-            # procesa el siguiente request del mesero
-            self.process_next_request(waiter, customer.table_id, event.time)
+            # procesa el siguiente task del mesero
+            self.process_next_task(waiter, customer.table_id, event.time, self.verbose)
         
         elif isinstance(event, WaiterReturnsToKitchen) or isinstance(event, WaiterCleansTable):
             # Un mesero regresa a la cocina.
             waiter: Waiter = event.waiter
             waiter.stop_walking(event.time, self.verbose)
+            waiter.at_kitchen = True
+            waiter.dishes_at_kitchen = self.restaurant.kitchen.prepared_orders
             
             # termina esta encomienda
-            waiter.finish_next_request(event.time, self.verbose)
+            waiter.finish_cur_task(event.time, self.verbose)
             
             # deja las órdenes que tenía en el inventario
             while len(waiter.orders_queue) > 0:
@@ -238,30 +252,23 @@ class SimulationEngine:
                     self.restaurant.kitchen.start_next_order(event.time, self.verbose)
                     cooking_time = order.dish.get_new_prob_cooking_time()
                     self.event_queue.add_event(KitchenPreparesOrder(event.time + cooking_time, order))
-
-            # recoge las órdenes preparadas que pueda
-            while len(self.restaurant.kitchen.prepared_orders) > 0 and waiter.has_capacity():
-                order = self.restaurant.kitchen.take_next_prepared_order()
-                request = DeliverDish(order)
-                waiter.add_dish(order, event.time, self.verbose)
-                waiter.add_request(request, event.time, self.verbose)
-
-            # procesa el siguiente request del mesero
-            if not waiter.is_free():
-                self.process_next_request(waiter, self.restaurant.kitchen.id, event.time)
+                    
+            # procesa el siguiente task del mesero
+            self.process_next_task(waiter, self.restaurant.kitchen.id, event.time, self.verbose)
         
         elif isinstance(event, KitchenPreparesOrder):
             # La cocina termina de preparar una orden.
             order: Order = event.order
             self.restaurant.kitchen.finish_order(order, event.time, self.verbose)
+            if len(self.restaurant.kitchen.orders_queue) > 0:
+                order = self.restaurant.kitchen.orders_queue[0]
+                self.restaurant.kitchen.start_next_order(event.time, self.verbose)
+                cooking_time = order.dish.get_new_prob_cooking_time()
+                self.event_queue.add_event(KitchenPreparesOrder(event.time + cooking_time, order))
         
             for waiter in self.restaurant.waiters:
                 if waiter.is_free():
-                    order = self.restaurant.kitchen.take_next_prepared_order()
-                    request = DeliverDish(order)
-                    waiter.add_dish(order, event.time, self.verbose)
-                    waiter.add_request(request, event.time, self.verbose)
-                    self.process_next_request(waiter, self.restaurant.kitchen.id, event.time)
+                    self.process_next_task(waiter, self.restaurant.kitchen.id, event.time, self.verbose)
                     break
         
         elif isinstance(event, WaiterDeliversDish):
@@ -272,8 +279,8 @@ class SimulationEngine:
             waiter.stop_walking(event.time, self.verbose)
             customer.stop_waiting(event.time, self.verbose)
 
-            waiter.finish_next_request(event.time, self.verbose)
-            self.process_next_request(waiter, customer.table_id, event.time)
+            waiter.finish_cur_task(event.time, self.verbose)
+            self.process_next_task(waiter, customer.table_id, event.time, self.verbose)
 
             eating_time = random.randint(600, 1200) # config
             self.event_queue.add_event(CustomerFinishesEating(event.time + eating_time, customer))
@@ -285,16 +292,16 @@ class SimulationEngine:
             # busca al mesero más cercano
             called_waiter = self.closest_waiter(customer.position, event.time)
 
-            # se le asigna el request de cobrar la cuenta
-            request = CollectBill(customer)
+            # se le asigna el task de cobrar la cuenta
+            task = CollectBill(customer)
             called_waiter_is_free = called_waiter.is_free()
-            called_waiter.add_request(request, event.time, self.verbose)
+            called_waiter.add_task(task, event.time, self.verbose)
             customer.start_waiting(event.time, self.verbose)
 
             # si el mesero no tiene nada que hacer
             if called_waiter_is_free:
                 # debe estar en la cocina
-                self.process_next_request(called_waiter, self.restaurant.kitchen.id, event.time)
+                self.process_next_task(called_waiter, self.restaurant.kitchen.id, event.time, self.verbose)
 
         elif isinstance(event, WaiterDeliversBill):
             # Un mesero llega a una mesa y le entrega la cuenta al cliente, el cual empieza a pagar
@@ -338,4 +345,13 @@ class SimulationEngine:
             customer: Customer = event.customer
 
             customer.stop_walking(event.time, self.verbose)
-            self.restaurant.tables[customer.table_id - 2].is_available = True
+            table = self.restaurant.tables[customer.table_id - 2]
+            table.is_available = True
+
+            if len(self.customers_waiting_queue) > 0:
+                customer = self.customers_waiting_queue.pop(0)
+                table.is_available = False
+                customer.table_id = table.id
+                path = self.restaurant.path_matrix[self.restaurant.entry_door.id][table.id]
+                customer.start_walking(path, event.time, self.verbose)
+                self.event_queue.add_event(CustomerSits(event.time + len(path) - 1, customer))
