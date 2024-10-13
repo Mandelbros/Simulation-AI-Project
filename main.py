@@ -35,6 +35,7 @@ optimizer = RestaurantOptimizer(
     nights_per_layout=config['nights_per_layout'],
     initial_grid=config['optimizer_grid'],
     num_tables=config['number_of_tables'],
+    rules_priority=config['rules_priority'],
     verbose=args.verbose
 )
 
@@ -48,8 +49,13 @@ if args.mode == 'optimizer':
         print(row)
     print("Mejores propinas promedio por noche:", best_tips)
 elif args.mode == 'single_simulation':
-    tips = simulation_engine.run(config['single_simulation_grid'])
-    print("Propinas para una sola noche:", tips)
+    total_tips = 0
+    nights_per_layout = config['nights_per_layout']
+    for _ in range(nights_per_layout):
+        simulation_tips = simulation_engine.run(config['single_simulation_grid'], config['rules_priority'])
+        total_tips += simulation_tips
+        print("propina: ", simulation_tips)
+    print("Promedio de propinas:", total_tips / nights_per_layout)
 
 # End the timer and print the total execution time
 end_time = time.time()

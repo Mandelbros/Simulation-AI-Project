@@ -46,10 +46,10 @@ class SimulationEngine:
                 arrival_event = CustomerArrives(current_time, customer)
                 self.event_queue.add_event(arrival_event)
 
-    def run(self, restaurant_grid):
+    def run(self, restaurant_grid, rules_priority):
         self.event_queue.clear()        # deberia estar vacia, pero x si acaso
-        print(restaurant_grid)
-        self.restaurant = Restaurant(restaurant_grid, self.waiter_amount)
+        # print(restaurant_grid)
+        self.restaurant = Restaurant(restaurant_grid, self.waiter_amount, rules_priority)
         self.generate_customer_arrivals(self.arrival_rate)
 
         while not self.event_queue.is_empty():

@@ -7,7 +7,7 @@ from src.Dish import Dish
 from src.utils.utils import PlaceType
 
 class Restaurant: 
-    def __init__(self, layout_grid, waiter_amount):
+    def __init__(self, layout_grid, waiter_amount, rules_priority):
         self.layout_grid = layout_grid
         self.waiter_amount = waiter_amount
         self.total_tips = 0  # Add total_tips attribute
@@ -16,7 +16,7 @@ class Restaurant:
         self.kitchen: Kitchen = None
         self.tables: List[Table] = [] 
         self.init_places()
-        self.waiters: List[Waiter] = [Waiter(i, self.kitchen.position) for i in range(waiter_amount)]
+        self.waiters: List[Waiter] = [Waiter(i, self.kitchen.position, rules_priority) for i in range(waiter_amount)]
         self.dishes: List[Dish] = [Dish(0, 600)] # config
         self.fill_path_matrix()
 

@@ -7,7 +7,7 @@ from src.tasks.tasks import Task
 from src.agents.rules import waiter_rules
 
 class Waiter(Agent):
-    def __init__(self, id, position: Position):
+    def __init__(self, id, position: Position, rules_priority):
         super().__init__(id, position, "Waiter")
         self.tasks: List[Task] = []
         self.orders_queue: List[Order] = []
@@ -16,6 +16,7 @@ class Waiter(Agent):
         self.at_kitchen = True
         self.dishes_at_kitchen = []
         self.cur_task = None
+        self.rules_priority = rules_priority #lista con los indices de las reglas en orden de prioridad
     
     def add_task(self, task: Task, time, verbose):
         self.tasks.append(task)
@@ -23,8 +24,8 @@ class Waiter(Agent):
             print(f'\tWaiter {self.id} received new {task}, at time {time}.')
 
     def decide_action(self, time, verbose):
-        for rule in waiter_rules:
-            rule.evaluate(self, time, verbose)
+        for rule_index in self.rules_priority:
+            waiter_rules[rule_index].evaluate(self, time, verbose)
     
     def work_on_task(self, i):
         self.cur_task = self.tasks.pop(i)
