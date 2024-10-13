@@ -4,87 +4,127 @@ from src.SimulationEngine import SimulationEngine
 from src.utils.utils import PlaceType  
 
 class RestaurantOptimizer:
-    def __init__(self, simulation_engine, initial_temp, final_temp, alpha, max_iter, nights_per_layout, verbose=False):
+    def __init__(self, simulation_engine, initial_temp, final_temp, alpha, max_iter, nights_per_layout, initial_grid, num_tables, verbose=False):
         self.simulation_engine:SimulationEngine = simulation_engine
         self.initial_temp = initial_temp
         self.final_temp = final_temp
         self.alpha = alpha
         self.max_iter = max_iter
         self.nights_per_layout = nights_per_layout
+        self.tables_positions = []
+        self.empty_positions = []
+        self.layout_grid = initial_grid
         self.verbose = verbose
+        self.random_initial_config(num_tables) 
 
     def cost_function(self, layout_grid):
         total_tips = 0
         for _ in range(self.nights_per_layout):
             total_tips += self.simulation_engine.run(layout_grid)
         return -total_tips / self.nights_per_layout
+    
+    def get_neighbour(self):
+        new_grid = [row[:] for row in self.layout_grid] 
 
-    def _is_valid_table_pos(self, layout_grid, r, c):
+        empty_r, empty_c = random.choice(self.empty_positions) 
+        table_r, table_c = random.choice(self.tables_positions) 
+
+        new_grid[empty_r][empty_c] = PlaceType.TABLE
+        new_grid[table_r][table_c] = PlaceType.FLOOR
+
+        return new_grid, (table_r, table_c), (empty_r, empty_c)
+    
+    def is_available_pos(self, r, c):
+        if self.layout_grid[r][c] != PlaceType.FLOOR:
+            return False
+        
         for dr in [-1, 0, 1]:
             for dc in [-1, 0, 1]:
-                if dr == 0 and dc == 0:
+                if dr==0 and dc==0:
                     continue
-                
+
                 nr, nc = r + dr, c + dc
-                if 0 <= nr < len(layout_grid) and 0 <= nc < len(layout_grid[0]) and layout_grid[nr][nc] == PlaceType.TABLE:
+
+                if 0 <= nr < len(self.layout_grid) and 0 <= nc < len(self.layout_grid[0]) and self.layout_grid[nr][nc] not in (PlaceType.WALL, PlaceType.FLOOR):
                     return False
                 
         return True
-    
-    def get_neighbor(self, layout_grid):
-        new_grid = [row[:] for row in layout_grid]
-        rows, cols = len(new_grid), len(new_grid[0])
-        
-        while True:
-            x1, y1 = random.randint(0, rows - 1), random.randint(0, cols - 1)
-            x2, y2 = random.randint(0, rows - 1), random.randint(0, cols - 1)
-            
-            if new_grid[x1][y1] == PlaceType.TABLE and new_grid[x2][y2] == PlaceType.FLOOR:
-                new_grid[x1][y1], new_grid[x2][y2] = new_grid[x2][y2], new_grid[x1][y1]
 
-                if self._is_valid_table_pos(layout_grid, x2, y2):
-                    break
-                
-                new_grid[x1][y1], new_grid[x2][y2] = new_grid[x2][y2], new_grid[x1][y1]
-                
+    def add_table(self, r, c):
+        self.layout_grid[r][c] = PlaceType.TABLE
+        self.tables_positions.append((r, c))
 
-        return new_grid
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                nr, nc = r + dr, c + dc
+
+                if (nr, nc) in self.empty_positions:
+                    self.empty_positions.remove((nr, nc))
+
+    def remove_table(self, r, c):
+        self.layout_grid[r][c] = PlaceType.FLOOR
+        self.tables_positions.remove((r, c))
+
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                nr, nc = r + dr, c + dc
+
+                if self.is_available_pos(nr, nc):
+                    self.empty_positions.append((nr, nc))
+
+    def random_initial_config(self, num_tables):
+        rows, cols = len(self.layout_grid), len(self.layout_grid[0]) 
+
+        available_positions = [[1 for _ in range(cols)] for _ in range(rows)] 
+
+        for row in range(rows):
+            for col in range(cols):
+                cell = self.layout_grid[row][col]
+
+                if cell == PlaceType.WALL:
+                    available_positions[row][col] = 0
+                elif cell in (PlaceType.TABLE, PlaceType.ENTRY_DOOR, PlaceType.KITCHEN):
+                    for dr in [-1, 0, 1]:
+                        for dc in [-1, 0, 1]:
+                            nr, nc = row + dr, col + dc
+                            if 0 <= nr < rows and 0 <= nc < cols:
+                                available_positions[nr][nc] = 0
+
+                    if cell == PlaceType.TABLE:
+                        self.tables_positions.append((row, col))
+
+        for row in range(rows):
+            for col in range(cols):
+                if available_positions[row][col]:
+                    self.empty_positions.append((row, col))  
+ 
+        while len(self.tables_positions) < num_tables:
+            r, c = random.choice(self.empty_positions) 
+            self.add_table(r, c)
+
     
-    
-    def random_initial_config(self, layout_grid, num_tables):
-        rows, cols = len(layout_grid), len(layout_grid[0])
-        new_grid = [row[:] for row in layout_grid]  # Make a copy of the grid
-        
-        placed_tables = 0
-        while placed_tables < num_tables:
-            r, c = random.randint(0, rows - 1), random.randint(0, cols - 1)
-            
-            # Check if the spot is a floor and is not adjacent to another table
-            if new_grid[r][c] == PlaceType.FLOOR and self._is_valid_table_pos(new_grid, r, c):
-                new_grid[r][c] = PlaceType.TABLE
-                placed_tables += 1
-        
-        return new_grid
-    
-    def simulated_annealing(self, initial_config):
-        current_config = initial_config
-        current_cost = self.cost_function(current_config)
-        best_config = current_config
+    def simulated_annealing(self):
+        current_cost = self.cost_function(self.layout_grid)
+        best_config = self.layout_grid
         best_cost = current_cost
         temp = self.initial_temp
 
         while temp > self.final_temp:
             for _ in range(self.max_iter):
-                neighbor_config = self.get_neighbor(current_config)
-                neighbor_cost = self.cost_function(neighbor_config)
-                delta_cost = neighbor_cost - current_cost
+                neighbour_config, table_pos, empty_pos = self.get_neighbour()
+
+                neighbour_cost = self.cost_function(neighbour_config)
+                delta_cost = neighbour_cost - current_cost
 
                 if delta_cost < 0 or random.uniform(0, 1) < math.exp(-delta_cost / temp):
-                    current_config = neighbor_config
-                    current_cost = neighbor_cost
+                    self.layout_grid = neighbour_config
+                    current_cost = neighbour_cost
+
+                    self.add_table(empty_pos[0], empty_pos[1])
+                    self.remove_table(table_pos[0], table_pos[1])
 
                     if current_cost < best_cost:
-                        best_config = current_config
+                        best_config = self.layout_grid
                         best_cost = current_cost
 
             temp *= self.alpha

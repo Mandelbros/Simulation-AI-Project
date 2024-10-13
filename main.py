@@ -33,20 +33,16 @@ optimizer = RestaurantOptimizer(
     alpha=config['alpha'],
     max_iter=config['max_iter'],
     nights_per_layout=config['nights_per_layout'],
+    initial_grid=config['optimizer_grid'],
+    num_tables=config['number_of_tables'],
     verbose=args.verbose
-)
-
-# Configuración inicial aleatoria
-initial_config = optimizer.random_initial_config(
-    layout_grid=config['optimizer_grid'], 
-    num_tables=config['number_of_tables']
 )
 
 start_time = time.time()
 
 # Selección de modo de operación
 if args.mode == 'optimizer':
-    best_config, best_tips = optimizer.simulated_annealing(initial_config)
+    best_config, best_tips = optimizer.simulated_annealing()
     print("Mejor configuración:")
     for row in best_config:
         print(row)
