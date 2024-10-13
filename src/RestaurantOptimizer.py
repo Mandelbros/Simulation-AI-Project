@@ -15,7 +15,7 @@ class RestaurantOptimizer:
         self.empty_positions = []
         self.layout_grid = initial_grid
         self.verbose = verbose
-        self.random_initial_config(num_tables) 
+        self.fill_initial_grid(num_tables) 
 
     def cost_function(self, layout_grid):
         total_tips = 0
@@ -72,7 +72,7 @@ class RestaurantOptimizer:
                 if self.is_available_pos(nr, nc):
                     self.empty_positions.append((nr, nc))
 
-    def random_initial_config(self, num_tables):
+    def fill_initial_grid(self, num_tables):
         rows, cols = len(self.layout_grid), len(self.layout_grid[0]) 
 
         available_positions = [[1 for _ in range(cols)] for _ in range(rows)] 
