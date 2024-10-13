@@ -91,7 +91,7 @@ class SimulationEngine:
         time_passed /= 60
 
         # Assuming a typical cooling constant for food
-        cooling_constant = 0.05
+        cooling_constant = 0.09
 
         # Calculate the temperature difference between the initial temperature and room temperature
         temperature_difference = initial_temperature - room_temperature
@@ -278,6 +278,9 @@ class SimulationEngine:
 
             waiter.stop_walking(event.time, self.verbose)
             customer.stop_waiting(event.time, self.verbose)
+            task: DeliverDish = waiter.cur_task
+            dish_served_temperature = self.calc_dish_temperature(task.order.initial_temperature, 25, event.time - task.order.preparation_time)
+            customer.get_served(task.order, event.time, dish_served_temperature, self.verbose)
 
             waiter.finish_cur_task(event.time, self.verbose)
             self.process_next_task(waiter, customer.table_id, event.time, self.verbose)
@@ -321,7 +324,7 @@ class SimulationEngine:
             waiter: Waiter = event.waiter
 
             # deja una propina
-            tip_percent = self.get_tip_percentage(customer.total_wating_time, 70) # la temperatura en 70 temporalmente, TBD
+            tip_percent = self.get_tip_percentage(customer.total_wating_time, customer.dish_served_temperature)
             tip = self.get_tip(tip_percent, 20)
             customer.leave_tip(tip_percent, tip, event.time, self.verbose)
             self.restaurant.total_tips += tip
@@ -353,5 +356,6 @@ class SimulationEngine:
                 table.is_available = False
                 customer.table_id = table.id
                 path = self.restaurant.path_matrix[self.restaurant.entry_door.id][table.id]
+                customer.stop_waiting(event.time, self.verbose)
                 customer.start_walking(path, event.time, self.verbose)
                 self.event_queue.add_event(CustomerSits(event.time + len(path) - 1, customer))

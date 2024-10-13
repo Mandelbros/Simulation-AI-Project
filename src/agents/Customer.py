@@ -7,6 +7,7 @@ class Customer(Agent):
         self.total_wating_time = 0
         self.cur_waiting_start_time = None
         self.table_id = None
+        self.dish_served_temperature = None
 
     def start_waiting(self, time, verbose):
         self.stop_waiting(time, verbose)
@@ -24,6 +25,9 @@ class Customer(Agent):
     def leave_tip(self, tip_percent, tip, time, verbose):
         if verbose:
             print(f'\tCustomer {self.id} waited a total of {self.total_wating_time}s, left {tip_percent}% of tip (${tip}), at time {time}.')
+
+    def get_served(self, order, time, temperature, verbose):
+        self.dish_served_temperature = temperature
 
     def __str__(self):
         return f"Customer {self.id}"

@@ -1,6 +1,7 @@
 from typing import List
 from src.utils.utils import Place, Position
 from src.Order import Order
+import random
 
 class Kitchen(Place):
     def __init__(self, id, position: Position, cooking_capacity):
@@ -26,6 +27,8 @@ class Kitchen(Place):
                
     def finish_order(self, order: Order, time, verbose):
         self.in_progress -= 1
+        order.preparation_time = time
+        order.initial_temperature = 75 - random.randint(0, 5)
         self.prepared_orders.append(order)
         if verbose:
             print(f'\tThe kitchen finished cooking {order}, at time {time}.')

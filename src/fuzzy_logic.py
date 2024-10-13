@@ -87,6 +87,7 @@ class FuzzyTip:
     def get_tip(self, waiting_time, food_temp):
         if waiting_time > 3600:
             waiting_time = 3600
+        food_temp = (int)(food_temp)
         # Recuperar el valor precalculado de la tabla de búsqueda
         return self.lookup_table[(waiting_time, food_temp)]
     
