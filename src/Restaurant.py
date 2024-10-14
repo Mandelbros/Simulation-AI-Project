@@ -11,6 +11,7 @@ class Restaurant:
         self.layout_grid = layout_grid
         self.waiter_amount = waiter_amount
         self.total_tips = 0  # Add total_tips attribute
+        self.total_waiting_time = 0
         self.path_matrix = None
         self.entry_door: Place = None
         self.kitchen: Kitchen = None

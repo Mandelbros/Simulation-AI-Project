@@ -48,23 +48,26 @@ class RestaurantOptimizer:
             r, c = random.choice(self.empty_positions) 
             self.add_table(r, c)
     
-    def get_neighbour(self):
+    def get_neighbour(self, optimize_grid=False, optimize_rules=False):
         new_grid = [row[:] for row in self.layout_grid] 
         new_rules = self.rules_priority[:]
 
-        empty_r, empty_c = random.choice(self.empty_positions) 
-        table_r, table_c = random.choice(self.tables_positions) 
+        if optimize_grid:
+            empty_r, empty_c = random.choice(self.empty_positions) 
+            table_r, table_c = random.choice(self.tables_positions) 
 
-        new_grid[empty_r][empty_c] = PlaceType.TABLE
-        new_grid[table_r][table_c] = PlaceType.FLOOR
+            new_grid[empty_r][empty_c] = PlaceType.TABLE
+            new_grid[table_r][table_c] = PlaceType.FLOOR
 
-        # rule1 = random.randint(0, len(new_rules) - 1)
-        # rule2 = random.randint(0, len(new_rules) - 2)
+        if optimize_rules:
+            rule1 = random.randint(0, len(new_rules) - 1)
+            rule2 = random.randint(0, len(new_rules) - 2)
 
-        # if rule2>=rule1:
-        #     rule2+=1
+            if rule2>=rule1:
+                rule2+=1
 
-        # new_rules[rule1], new_rules[rule2] = new_rules[rule2], new_rules[rule1]
+            new_rules[rule1], new_rules[rule2] = new_rules[rule2], new_rules[rule1]
+
         return new_grid, new_rules, (table_r, table_c), (empty_r, empty_c)
     
     def is_available_pos(self, r, c):
@@ -107,21 +110,28 @@ class RestaurantOptimizer:
 
     def cost_function(self, layout_grid, rules_priority):
         total_tips = 0
+        total_waiting_time = 0
         for _ in range(self.nights_per_layout):
-            total_tips += self.simulation_engine.run(layout_grid, rules_priority)
-        return -total_tips / self.nights_per_layout
+            nigth_tips, nigth_waiting_time = self.simulation_engine.run(layout_grid, rules_priority)
+            total_tips += nigth_tips
+            total_waiting_time += nigth_waiting_time
+
+        return -total_tips / self.nights_per_layout, total_waiting_time / self.nights_per_layout
     
     def simulated_annealing(self):
-        current_cost = self.cost_function(self.layout_grid, self.rules_priority)
+        current_cost, best_waiting_time = self.cost_function(self.layout_grid, self.rules_priority)
         best_config = self.layout_grid
         best_cost = current_cost
+        init_tips = -best_cost     ##
+        init_wait = best_waiting_time  ##
+        
         temp = self.initial_temp
 
         while temp > self.final_temp:
             for _ in range(self.max_iter):
-                neighbour_layout, neighbour_rules, table_pos, empty_pos = self.get_neighbour()
+                neighbour_layout, neighbour_rules, table_pos, empty_pos = self.get_neighbour(optimize_rules=True)
 
-                neighbour_cost = self.cost_function(neighbour_layout, neighbour_rules)
+                neighbour_cost, current_waiting_time = self.cost_function(neighbour_layout, neighbour_rules)
                 delta_cost = neighbour_cost - current_cost
 
                 if delta_cost < 0 or random.uniform(0, 1) < math.exp(-delta_cost / temp):
@@ -129,19 +139,21 @@ class RestaurantOptimizer:
                     self.rules_priority = neighbour_rules
                     current_cost = neighbour_cost
 
-
-                    self.add_table(empty_pos[0], empty_pos[1])
                     self.remove_table(table_pos[0], table_pos[1])
+                    self.add_table(empty_pos[0], empty_pos[1])
 
                     if current_cost < best_cost:
                         best_config = self.layout_grid
                         best_cost = current_cost
+                        best_waiting_time = current_waiting_time
 
                         # for row in self.layout_grid:
                         #     print(row)
                         # print("cost: ", best_cost)
                         # print("")
 
+                        print(self.rules_priority)
+
             temp *= self.alpha
 
-        return best_config, -best_cost
+        return best_config, -best_cost, best_waiting_time, init_tips, init_wait

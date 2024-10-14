@@ -63,7 +63,7 @@ class SimulationEngine:
             
         if self.verbose:
             print("Total tips:", self.restaurant.total_tips)
-        return self.restaurant.total_tips  # Return the total tips collected during the simulation
+        return self.restaurant.total_tips, self.restaurant.total_waiting_time  # Return the total tips collected during the simulation
     
     def closest_waiter(self, position, time):
         best_dist = 100000000000
@@ -327,6 +327,7 @@ class SimulationEngine:
             tip_percent = self.get_tip_percentage(customer.total_wating_time, customer.dish_served_temperature)
             tip = self.get_tip(tip_percent, 20)
             customer.leave_tip(tip_percent, tip, event.time, self.verbose)
+            self.restaurant.total_waiting_time += customer.total_wating_time
             self.restaurant.total_tips += tip
 
             # se levanta de la mesa y empieza a caminar hacia la salida

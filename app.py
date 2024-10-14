@@ -5,6 +5,10 @@ from src.SimulationEngine import SimulationEngine
 from src.RestaurantOptimizer import RestaurantOptimizer 
 import os
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+with open(os.path.join(dir_path, 'config.json')) as f:
+    config = json.load(f)
+
 # Function to display the main page with buttons
 def main_page():
     st.title("Welcome")
@@ -41,10 +45,6 @@ def optimizer_page():
 
     # Botón para comenzar la simulación usando el optimizador
     if st.button('Run Optimizer'):  
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        with open(os.path.join(dir_path, 'config.json')) as f:
-            config = json.load(f)
-
         simulation_engine = SimulationEngine(
             duration=config['simulation_duration'],
             arrival_rate=config['arrival_rate'],
@@ -81,7 +81,27 @@ def optimizer_page():
 # Function to display the cows page
 def simulator_page():
     st.title("Single Simulation")
-    st.write("Here is some information about cows.")
+    # st.write("Here is some information about cows.")
+
+    if st.button('Run Single Simulation'):  
+        simulation_engine = SimulationEngine(
+            duration=config['simulation_duration'],
+            arrival_rate=config['arrival_rate'],
+            waiter_amount=config['number_of_waiters'],
+            # verbose=args.verbose
+        )
+
+        total_tips = 0
+        nights_per_layout = config['nights_per_layout']
+
+        with st.spinner('Ejecutando simulación...'):
+            for _ in range(nights_per_layout):
+                simulation_tips = simulation_engine.run(config['single_simulation_grid'], config['rules_priority'])
+                total_tips += simulation_tips
+        
+        st.success("Simulación completada con éxito!")
+        st.write(f"Promedio de propinas: ", total_tips / nights_per_layout) 
+
     if st.button('Back'):
         st.session_state.page = 'main'
         st.rerun()
