@@ -32,7 +32,8 @@ class Restaurant:
 
         Returns:
         None
-        """
+        """ 
+ 
         for i, row in enumerate(self.layout_grid):
             for j, cell in enumerate(row):
                 position = Position(i, j)

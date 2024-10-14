@@ -11,8 +11,8 @@ class RestaurantOptimizer:
         self.alpha = alpha
         self.max_iter = max_iter
         self.nights_per_layout = nights_per_layout
-        self.tables_positions = []
         self.empty_positions = []
+        self.tables_positions = []
         self.layout_grid = initial_grid
         self.rules_priority = rules_priority
         self.verbose = verbose
@@ -53,11 +53,25 @@ class RestaurantOptimizer:
         new_rules = self.rules_priority[:]
 
         if optimize_grid:
-            empty_r, empty_c = random.choice(self.empty_positions) 
-            table_r, table_c = random.choice(self.tables_positions) 
+            tables = self.tables_positions[:]
+            random.shuffle(tables)
 
-            new_grid[empty_r][empty_c] = PlaceType.TABLE
-            new_grid[table_r][table_c] = PlaceType.FLOOR
+            for table in tables:
+                dirs = [(-1,-1), (-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
+                random.shuffle(dirs)
+
+                new_grid[table[0]][table[1]] = PlaceType.FLOOR
+
+                for dir in dirs:
+                    nr = table[0]+dir[0]
+                    nc = table[1]+dir[1]
+
+                    if self.is_available_pos(new_grid, nr,nc):
+                        new_grid[nr][nc]=PlaceType.TABLE
+                        return new_rules, new_grid, (table[0], table[1]), (nr, nc)
+                        
+                
+                new_grid[table[0]][table[1]]=PlaceType.TABLE
 
         if optimize_rules:
             rule1 = random.randint(0, len(new_rules) - 1)
@@ -68,10 +82,11 @@ class RestaurantOptimizer:
 
             new_rules[rule1], new_rules[rule2] = new_rules[rule2], new_rules[rule1]
 
-        return new_grid, new_rules, (table_r, table_c), (empty_r, empty_c)
+        return new_rules, new_grid, (0,0), (0,0)
+
     
-    def is_available_pos(self, r, c):
-        if self.layout_grid[r][c] != PlaceType.FLOOR:
+    def is_available_pos(self, grid, r, c):
+        if grid[r][c] != PlaceType.FLOOR:
             return False
         
         for dr in [-1, 0, 1]:
@@ -81,7 +96,7 @@ class RestaurantOptimizer:
 
                 nr, nc = r + dr, c + dc
 
-                if 0 <= nr < len(self.layout_grid) and 0 <= nc < len(self.layout_grid[0]) and self.layout_grid[nr][nc] not in (PlaceType.WALL, PlaceType.FLOOR):
+                if 0 <= nr < len(grid) and 0 <= nc < len(grid[0]) and grid[nr][nc] not in (PlaceType.WALL, PlaceType.FLOOR):
                     return False
                 
         return True
@@ -90,23 +105,9 @@ class RestaurantOptimizer:
         self.layout_grid[r][c] = PlaceType.TABLE
         self.tables_positions.append((r, c))
 
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                nr, nc = r + dr, c + dc
-
-                if (nr, nc) in self.empty_positions:
-                    self.empty_positions.remove((nr, nc))
-
     def remove_table(self, r, c):
         self.layout_grid[r][c] = PlaceType.FLOOR
         self.tables_positions.remove((r, c))
-
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                nr, nc = r + dr, c + dc
-
-                if self.is_available_pos(nr, nc):
-                    self.empty_positions.append((nr, nc))
 
     def cost_function(self, layout_grid, rules_priority):
         total_tips = 0
@@ -118,7 +119,7 @@ class RestaurantOptimizer:
 
         return -total_tips / self.nights_per_layout, total_waiting_time / self.nights_per_layout
     
-    def simulated_annealing(self):
+    def simulated_annealing(self, optimize_grid=True, optimize_rules=False):
         current_cost, best_waiting_time = self.cost_function(self.layout_grid, self.rules_priority)
         best_config = self.layout_grid
         best_cost = current_cost
@@ -129,30 +130,45 @@ class RestaurantOptimizer:
 
         while temp > self.final_temp:
             for _ in range(self.max_iter):
-                neighbour_layout, neighbour_rules, table_pos, empty_pos = self.get_neighbour(optimize_rules=True)
+                neighbour_rules,neighbour_layout, table_pos, empty_pos = self.get_neighbour(optimize_grid, optimize_rules)
 
                 neighbour_cost, current_waiting_time = self.cost_function(neighbour_layout, neighbour_rules)
                 delta_cost = neighbour_cost - current_cost
 
+                for row in self.layout_grid:
+                    for cell in row:
+                        if cell == 0:
+                            print("#", end="")
+                        elif cell == 1:
+                            print(".",end="")
+                        elif cell == 2:
+                            print("O",end="")
+                        elif cell == 3:
+                            print("C",end="")
+                        elif cell == 4:
+                            print("P",end="")
+                    print()
+                print("temp: ", temp)
+                print(math.exp(-delta_cost / temp))
+                print("best cost: ", best_cost)
+                print("cost: ", current_cost)
+                print("")
+
                 if delta_cost < 0 or random.uniform(0, 1) < math.exp(-delta_cost / temp):
-                    self.layout_grid = neighbour_layout
-                    self.rules_priority = neighbour_rules
                     current_cost = neighbour_cost
 
-                    self.remove_table(table_pos[0], table_pos[1])
-                    self.add_table(empty_pos[0], empty_pos[1])
+                    if optimize_grid:
+                        self.layout_grid = neighbour_layout
+                        self.remove_table( table_pos[0], table_pos[1])
+                        self.add_table( empty_pos[0], empty_pos[1])
+                    if optimize_rules:
+                        self.rules_priority = neighbour_rules
 
                     if current_cost < best_cost:
                         best_config = self.layout_grid
                         best_cost = current_cost
                         best_waiting_time = current_waiting_time
-
-                        # for row in self.layout_grid:
-                        #     print(row)
-                        # print("cost: ", best_cost)
-                        # print("")
-
-                        print(self.rules_priority)
+                        # print(self.rules_priority)
 
             temp *= self.alpha
 

@@ -52,7 +52,7 @@ elif args.mode == 'single_simulation':
     total_tips = 0
     nights_per_layout = config['nights_per_layout']
     for _ in range(nights_per_layout):
-        simulation_tips = simulation_engine.run(config['single_simulation_grid'], config['rules_priority'])
+        simulation_tips, total_waiting_time = simulation_engine.run(config['single_simulation_grid'], config['rules_priority'])
         total_tips += simulation_tips
         print("propina: ", simulation_tips)
     print("Promedio de propinas:", total_tips / nights_per_layout)
