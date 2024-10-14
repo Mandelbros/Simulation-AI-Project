@@ -137,10 +137,10 @@ class RestaurantOptimizer:
                         best_config = self.layout_grid
                         best_cost = current_cost
 
-                        for row in self.layout_grid:
-                            print(row)
-                        print("cost: ", best_cost)
-                        print("")
+                        # for row in self.layout_grid:
+                        #     print(row)
+                        # print("cost: ", best_cost)
+                        # print("")
 
             temp *= self.alpha
 
